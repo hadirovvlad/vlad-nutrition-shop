@@ -33,7 +33,8 @@ Belok.ua використано лише як референс структур�
 окремої СУБД.
 
 ```bash
-cd sport-shop
+git clone https://github.com/hadirovvlad/vlad-nutrition-shop.git
+cd vlad-nutrition-shop
 npm install              # встановлює concurrently для запуску обох частин
 npm run setup            # ставить залежності client + server, створює й наповнює БД
 npm run dev              # API на :4000, сайт на :5173
@@ -120,7 +121,7 @@ UI-компоненти написані вручну в стилістиці sh
 ## Структура проєкту
 
 ```text
-sport-shop/
+vlad-nutrition-shop/
 ├── client/
 │   └── src/
 │       ├── components/        # ui/, layout/, product/, catalog/, auth/
@@ -363,7 +364,7 @@ checkout, історія та статуси замовлень, редагув�
 
 ## Скрипти
 
-З кореня `sport-shop/`:
+З кореня репозиторію:
 
 | Команда | Дія |
 | --- | --- |
