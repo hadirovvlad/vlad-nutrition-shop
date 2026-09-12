@@ -1,11 +1,17 @@
 // VLAD NUTRITION — sports nutrition store, data model.
 //
 // The MVP ships on SQLite so it runs with zero infrastructure.
-// To move to PostgreSQL: change `provider` to "postgresql", point DATABASE_URL at
-// your instance and run `npx prisma migrate dev`. Every field below is
-// Postgres-compatible; the only SQLite concession is that enum-like values and
-// list values are stored as String/JSON-in-String (see src/lib/constants.ts and
-// src/lib/json.ts) because SQLite supports neither native enums nor Json.
+//
+// The `provider` below is written by scripts/db-provider.mjs from the
+// DATABASE_PROVIDER environment variable (sqlite | postgresql), because Prisma
+// does not allow env() for a datasource provider. Do not hand-edit it: set
+// DATABASE_PROVIDER=postgresql plus a Postgres DATABASE_URL and run
+// `npm run db:push`. Production on Render does exactly this.
+//
+// Every field below is Postgres-compatible; the only SQLite concession is that
+// enum-like values and list values are stored as String/JSON-in-String (see
+// src/lib/constants.ts and src/lib/json.ts) because SQLite supports neither
+// native enums nor Json.
 
 generator client {
   provider = "prisma-client-js"

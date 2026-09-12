@@ -1,0 +1,66 @@
+# Render blueprint — one web service plus a PostgreSQL database.
+#
+# In production the Express server also serves the built SPA from client/dist,
+# so the API and the site share a single origin: no CORS, and the auth cookie
+# works without cross-site concessions.
+#
+# Deploy: Render dashboard → New + → Blueprint → pick this repository → Apply.
+
+services:
+  - type: web
+    name: vlad-nutrition
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    buildCommand: npm install && npm run render-build
+    startCommand: npm run render-start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # Prisma has no env() support for the datasource provider, so a build
+      # step rewrites schema.prisma from this value (see scripts/db-provider.mjs).
+      - key: DATABASE_PROVIDER
+        value: postgresql
+
+      - key: DATABASE_URL
+        fromDatabase:
+          name: vlad-nutrition-db
+          property: connectionString
+
+      # Generated once by Render and kept across deploys. Never commit a real
+      # secret to the repository.
+      - key: JWT_SECRET
+        generateValue: true
+
+      - key: JWT_EXPIRES_IN
+        value: 7d
+
+      # The seed is destructive, so on deploys it only bootstraps an empty
+      # database and leaves real orders alone.
+      - key: SEED_ONLY_IF_EMPTY
+        value: 'true'
+
+      - key: SEED_ADMIN_EMAIL
+        value: admin@vladnutrition.ua
+      - key: SEED_MANAGER_EMAIL
+        value: manager@vladnutrition.ua
+      - key: SEED_CLIENT_EMAIL
+        value: client@vladnutrition.ua
+
+      # Demo passwords. Change these in the Render dashboard before showing the
+      # site to anyone outside the project.
+      - key: SEED_ADMIN_PASSWORD
+        sync: false
+      - key: SEED_MANAGER_PASSWORD
+        sync: false
+      - key: SEED_CLIENT_PASSWORD
+        sync: false
+
+databases:
+  - name: vlad-nutrition-db
+    databaseName: vlad_nutrition
+    plan: free
+    region: frankfurt

@@ -17,7 +17,8 @@ async function main() {
 
   const server = app.listen(env.port, () => {
     console.log(`\n  ${SHOP_NAME} API → http://localhost:${env.port}/api  (${env.nodeEnv})`);
-    console.log(`  CORS origin → ${env.clientOrigin}\n`);
+    const cors = env.corsOrigins;
+    console.log(`  CORS origin → ${cors.length ? cors.join(', ') : 'same-origin only'}\n`);
   });
 
   const shutdown = async (signal: string) => {

@@ -6,15 +6,16 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "prisma generate && tsc -p tsconfig.json",
+    "build": "npm run db:provider && prisma generate && tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "typecheck": "tsc -p tsconfig.check.json",
-    "db:generate": "prisma generate",
-    "db:push": "prisma db push",
-    "db:init": "prisma db push && npm run db:seed",
-    "db:reset": "prisma db push --force-reset && npm run db:seed",
+    "db:provider": "node scripts/db-provider.mjs",
+    "db:generate": "npm run db:provider && prisma generate",
+    "db:push": "npm run db:provider && prisma db push",
+    "db:init": "npm run db:push && npm run db:seed",
+    "db:reset": "npm run db:provider && prisma db push --force-reset && npm run db:seed",
     "db:seed": "tsx prisma/seed.ts",
-    "db:studio": "prisma studio"
+    "db:studio": "npm run db:provider && prisma studio"
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",

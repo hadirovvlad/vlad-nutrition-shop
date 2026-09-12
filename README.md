@@ -328,13 +328,55 @@ checkout, історія та статуси замовлень, редагув�
 
 ---
 
+## Деплой на Render
+
+У репозиторії є `render.yaml`, тому розгортання робиться кількома кліками:
+
+1. [dashboard.render.com](https://dashboard.render.com) → **New +** → **Blueprint**.
+2. Підключити GitHub і вибрати репозиторій `vlad-nutrition-shop`.
+3. Render прочитає `render.yaml` і покаже web-сервіс + базу PostgreSQL.
+4. Заповнити три змінні, які навмисно не зберігаються в репозиторії:
+   `SEED_ADMIN_PASSWORD`, `SEED_MANAGER_PASSWORD`, `SEED_CLIENT_PASSWORD`.
+5. **Apply**. Перший деплой триває 5–10 хвилин.
+
+Адреса вигляду `https://vlad-nutrition.onrender.com` з’явиться в дашборді.
+
+Що відбувається під час збірки: `DATABASE_PROVIDER=postgresql` перемикає
+провайдер Prisma, `prisma db push` створює схему, а сід наповнює базу
+демо-даними **лише якщо вона порожня** (`SEED_ONLY_IF_EMPTY=true`), тому
+наступні деплої не стирають реальні замовлення. `JWT_SECRET` Render генерує сам
+і зберігає між деплоями.
+
+Обмеження безкоштовного тарифу, про які варто знати:
+
+- Сервіс засинає після ~15 хвилин без запитів, і перше відкриття після сну
+  триває до хвилини.
+- Диск ефемерний: завантажені через адмінку фотографії зникнуть після
+  перезапуску. Згенеровані зображення товарів не залежать від диска й
+  працюють завжди — для постійного зберігання фото потрібен S3 або Cloudinary.
+- Безкоштовна база PostgreSQL на Render має обмежений термін життя; для
+  тривалого проєкту варто перейти на платний план або зовнішній Postgres.
+
+> Демо-паролі з розділу [Демо-доступи](#демо-доступи) діють лише локально. На
+> публічному сайті задайте інші — інакше будь-хто, хто прочитає цей README,
+> зайде у вашу адмін-панель.
+
 ## Перехід на PostgreSQL
 
-1. У `server/prisma/schema.prisma` замініть `provider = "sqlite"` на
-   `provider = "postgresql"`.
-2. У `server/.env` вкажіть `DATABASE_URL="postgresql://user:pass@host:5432/db?schema=public"`.
-3. `npm --prefix server run db:generate && npx prisma migrate dev --name init`
-4. `npm --prefix server run db:seed`
+Провайдер Prisma не читає `env()`, тому його переписує скрипт
+`server/scripts/db-provider.mjs` перед будь-якою командою prisma. Схема при
+цьому лишається одна — без двох файлів, що розходяться.
+
+У `server/.env`:
+
+```ini
+DATABASE_PROVIDER=postgresql
+DATABASE_URL="postgresql://user:pass@host:5432/vlad_nutrition?schema=public"
+```
+
+Далі `npm --prefix server run db:push && npm --prefix server run db:seed`.
+Щоб повернутися на SQLite, поставте `DATABASE_PROVIDER=sqlite` — рядок у схемі
+перепишеться назад.
 
 Усі поля схеми Postgres-сумісні. Після переходу можна за бажанням:
 перевести `String`-поля ролі та статусів на справжні `enum`, а JSON-текстові

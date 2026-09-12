@@ -953,6 +953,17 @@ function pick<T>(list: readonly T[], index: number): T {
 }
 
 async function main() {
+  // Deploys run the seed on every build, but it is destructive. With this flag
+  // it becomes a first-run bootstrap: an already-populated database is left
+  // untouched, so real orders survive the next deploy.
+  if (process.env.SEED_ONLY_IF_EMPTY === 'true') {
+    const existing = await prisma.product.count();
+    if (existing > 0) {
+      console.log(`• База вже містить ${existing} товар(ів) — сід пропущено.`);
+      return;
+    }
+  }
+
   console.log('→ Очищення бази…');
   // Child rows first so no foreign key is left dangling.
   await prisma.orderNote.deleteMany();
