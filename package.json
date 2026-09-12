@@ -1,0 +1,22 @@
+{
+  "name": "sport-shop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "VLAD NUTRITION — modern sports nutrition e-commerce (React + Express + Prisma)",
+  "scripts": {
+    "setup": "npm run install:all && npm run db:init",
+    "install:all": "npm --prefix server install && npm --prefix client install",
+    "db:init": "npm --prefix server run db:init",
+    "db:reset": "npm --prefix server run db:reset",
+    "db:seed": "npm --prefix server run db:seed",
+    "dev": "concurrently -n server,client -c cyan,magenta \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "build": "npm --prefix server run build && npm --prefix client run build",
+    "start": "npm --prefix server run start",
+    "typecheck": "npm --prefix server run typecheck && npm --prefix client run typecheck"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

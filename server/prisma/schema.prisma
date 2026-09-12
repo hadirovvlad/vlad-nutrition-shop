@@ -1,0 +1,263 @@
+// VLAD NUTRITION — sports nutrition store, data model.
+//
+// The MVP ships on SQLite so it runs with zero infrastructure.
+// To move to PostgreSQL: change `provider` to "postgresql", point DATABASE_URL at
+// your instance and run `npx prisma migrate dev`. Every field below is
+// Postgres-compatible; the only SQLite concession is that enum-like values and
+// list values are stored as String/JSON-in-String (see src/lib/constants.ts and
+// src/lib/json.ts) because SQLite supports neither native enums nor Json.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  phone     String?
+  password  String
+  // "ADMIN" | "MANAGER" | "CLIENT" — see ROLES in src/lib/constants.ts
+  role      String   @default("CLIENT")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  resetToken       String?
+  resetTokenExpiry DateTime?
+
+  addresses      Address[]
+  orders         Order[]     @relation("OrderCustomer")
+  managedOrders  Order[]     @relation("OrderManager")
+  reviews        Review[]
+  favorites      Favorite[]
+  orderNotes     OrderNote[]
+
+  @@index([role])
+}
+
+model Address {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  label     String   @default("Основна")
+  city      String
+  warehouse String
+  recipient String?
+  phone     String?
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String
+  slug      String   @unique
+  image     String?
+  icon      String?
+  parentId  Int?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryTree")
+  products Product[]
+
+  @@index([parentId])
+}
+
+model Brand {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  slug      String   @unique
+  logo      String?
+  country   String?
+  createdAt DateTime @default(now())
+
+  products Product[]
+}
+
+model Product {
+  id          Int    @id @default(autoincrement())
+  name        String
+  slug        String @unique
+  description String @default("")
+  composition String @default("")
+  usage       String @default("")
+
+  // Prices are stored in UAH, rounded to 2 decimals on write (see lib/money.ts).
+  price    Float
+  oldPrice Float?
+  stock    Int    @default(0)
+
+  brandId    Int
+  categoryId Int
+
+  weight String?
+  flavor String?
+  form   String? // "Порошок" | "Капсули" | "Таблетки" | "Рідина" | "Батончик" | "Аксесуар"
+
+  // JSON-encoded string arrays (SQLite has no Json/array types).
+  weights String @default("[]")
+  flavors String @default("[]")
+  goals   String @default("[]")
+  images  String @default("[]")
+  specs   String @default("[]") // [{ "label": "...", "value": "..." }]
+
+  image String?
+
+  rating      Float @default(0)
+  reviewCount Int   @default(0)
+  soldCount   Int   @default(0)
+
+  // Maintained on every write so the database can sort by discount size.
+  discountPercent Int @default(0)
+
+  // Lowercased "name + brand + category + flavor" haystack. SQLite's LIKE is
+  // only case-insensitive for ASCII, so search compares lowercase to lowercase
+  // to make Cyrillic queries work too.
+  searchIndex String @default("")
+
+  isNew        Boolean @default(false)
+  isBestseller Boolean @default(false)
+  isSale       Boolean @default(false)
+  isFeatured   Boolean @default(false)
+  isActive     Boolean @default(true)
+
+  // A manager may request a deletion; only an admin can carry it out.
+  deleteRequested   Boolean @default(false)
+  deleteRequestedBy Int?
+
+  seoTitle       String?
+  seoDescription String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  brand      Brand       @relation(fields: [brandId], references: [id])
+  category   Category    @relation(fields: [categoryId], references: [id])
+  reviews    Review[]
+  favorites  Favorite[]
+  orderItems OrderItem[]
+
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([isSale])
+  @@index([price])
+  @@index([discountPercent])
+}
+
+model Order {
+  id     Int @id @default(autoincrement())
+  number Int @unique @default(0)
+
+  userId    Int?
+  managerId Int?
+
+  // "NEW" | "CONFIRMING" | "PROCESSING" | "SHIPPED" | "COMPLETED" | "CANCELLED"
+  status String @default("NEW")
+
+  subtotal Float
+  discount Float @default(0)
+  total    Float
+
+  deliveryMethod String // "NOVA_POSHTA" | "PICKUP"
+  paymentMethod  String // "COD" | "ONLINE"
+
+  firstName String
+  lastName  String
+  phone     String
+  email     String
+  city      String?
+  warehouse String?
+  comment   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User?       @relation("OrderCustomer", fields: [userId], references: [id])
+  manager User?       @relation("OrderManager", fields: [managerId], references: [id])
+  items   OrderItem[]
+  notes   OrderNote[]
+
+  @@index([status])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id        Int    @id @default(autoincrement())
+  orderId   Int
+  productId Int?
+
+  // Snapshot of the product at purchase time — the order must stay readable
+  // even if the product is later renamed or removed.
+  name     String
+  slug     String?
+  image    String?
+  price    Float
+  quantity Int
+  weight   String?
+  flavor   String?
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+}
+
+model OrderNote {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  authorId  Int?
+  text      String
+  createdAt DateTime @default(now())
+
+  order  Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  author User? @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+}
+
+model Review {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  productId  Int
+  rating     Int
+  text       String
+  isApproved Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([productId])
+}
+
+model Favorite {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  productId Int
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
