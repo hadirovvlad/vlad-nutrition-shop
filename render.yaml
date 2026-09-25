@@ -13,7 +13,13 @@ services:
     plan: free
     region: frankfurt
     branch: main
-    buildCommand: npm install && npm run render-build
+    # NODE_ENV=production below makes npm omit devDependencies, but the build
+    # needs them: TypeScript, Vite, @types/node, tsx and the Prisma CLI all
+    # live there. Hence --include=dev on every install.
+    buildCommand: npm install --include=dev && npm run render-build
+    # The schema sync and the first-run seed happen at startup, not during the
+    # build: the build has no business reaching the database, and at startup the
+    # connection is guaranteed to be up. Both steps are idempotent.
     startCommand: npm run render-start
     healthCheckPath: /api/health
     envVars:
